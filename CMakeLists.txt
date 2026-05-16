@@ -10,6 +10,8 @@ add_executable(${PROJECT_NAME}
         src/main.cpp
         src/lzw.cpp
         src/image_io.cpp
+        include/image_io.h
+        include/lzw.h
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE include ${OpenCV_INCLUDE_DIRS})
