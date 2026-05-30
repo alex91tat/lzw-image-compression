@@ -3,3 +3,5 @@ cmake-build-debug/
 *.o
 *.lzw
 .idea/
+output/
+compressed/
