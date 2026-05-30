@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <vector>
 #include <string>
@@ -25,15 +26,12 @@ void compress(const string& inputPath, const string& outputPath) {
         return;
     }
 
-    // write header
     uint32_t w = (uint32_t)width;
     uint32_t h = (uint32_t)height;
     uint32_t dataSize = (uint32_t)compressed.size();
     file.write((char*)&w,        sizeof(uint32_t));
     file.write((char*)&h,        sizeof(uint32_t));
     file.write((char*)&dataSize, sizeof(uint32_t));
-
-    // write packed bit stream
     file.write((char*)compressed.data(), compressed.size());
     file.close();
 
@@ -43,11 +41,19 @@ void compress(const string& inputPath, const string& outputPath) {
 
     long originalSize = width * height;
 
-    cout << "File:              " << inputPath << endl;
-    cout << "Original size:     " << originalSize   << " bytes" << endl;
-    cout << "Compressed size:   " << compressedSize << " bytes" << endl;
-    cout << "Compression ratio: " << (float)originalSize / compressedSize << endl;
-    cout << "-----------------------------------" << endl;
+    cout << left
+         << setw(20) << "File:"
+         << inputPath << endl;
+    cout << left
+         << setw(20) << "Original size:"
+         << originalSize << " bytes" << endl;
+    cout << left
+         << setw(20) << "Compressed size:"
+         << compressedSize << " bytes" << endl;
+    cout << left
+         << setw(20) << "Ratio:"
+         << (float)originalSize / compressedSize << endl;
+    cout << string(50, '-') << endl;
 }
 
 void decompress(const string& inputPath, const string& outputPath) {
@@ -65,7 +71,6 @@ void decompress(const string& inputPath, const string& outputPath) {
     int width  = (int)w;
     int height = (int)h;
 
-    // read packed bit stream
     vector<uint8_t> compressed(dataSize);
     file.read((char*)compressed.data(), dataSize);
     file.close();
@@ -79,13 +84,20 @@ void decompress(const string& inputPath, const string& outputPath) {
     }
 
     saveImage(outputPath, pixels, width, height);
-    cout << "Decompressed: " << inputPath << " -> " << outputPath << endl;
+    cout << left
+         << setw(40) << inputPath
+         << " -> " << outputPath << endl;
 }
 
 void benchmark(const vector<string>& imagePaths) {
-    cout << "\n=== BENCHMARK RESULTS ===" << endl;
-    cout << "Image                  Original        Compressed      Ratio" << endl;
-    cout << "----------------------------------------------------------------" << endl;
+    cout << "\n=== BENCHMARK RESULTS (9-16 bit) ===" << endl;
+    cout << left
+         << setw(20) << "Image"
+         << setw(15) << "Original"
+         << setw(15) << "Compressed"
+         << setw(10) << "Ratio"
+         << endl;
+    cout << string(60, '-') << endl;
 
     for (const string& path : imagePaths) {
         int width, height;
@@ -100,10 +112,12 @@ void benchmark(const vector<string>& imagePaths) {
 
         string filename = path.substr(path.find_last_of("/\\") + 1);
 
-        cout << filename     << "\t\t"
-             << originalSize << " bytes\t\t"
-             << compressedSize << " bytes\t\t"
-             << ratio        << endl;
+        cout << left
+             << setw(20) << filename
+             << setw(15) << originalSize
+             << setw(15) << compressedSize
+             << setw(10) << ratio
+             << endl;
     }
 }
 
@@ -145,6 +159,80 @@ void displayResults() {
     destroyAllWindows();
 }
 
+void benchmark12(const vector<string>& imagePaths) {
+    cout << "\n=== COMPARISON: 9-16 bit vs 9-12 bit ===" << endl;
+    cout << left
+         << setw(20) << "Image"
+         << setw(15) << "Original"
+         << setw(15) << "9-16 bit"
+         << setw(12) << "Ratio"
+         << setw(15) << "9-12 bit"
+         << setw(12) << "Ratio"
+         << endl;
+    cout << string(89, '-') << endl;
+
+    for (const string& path : imagePaths) {
+        int width, height;
+        vector<uint8_t> pixels = loadImage(path, width, height);
+        if (pixels.empty()) continue;
+
+        vector<uint8_t> compressed16 = encode(pixels);
+        vector<uint8_t> compressed12 = encode12(pixels);
+
+        long originalSize     = width * height;
+        long compressedSize16 = sizeof(uint32_t) * 3 + compressed16.size();
+        long compressedSize12 = sizeof(uint32_t) * 3 + compressed12.size();
+
+        float ratio16 = (float)originalSize / compressedSize16;
+        float ratio12 = (float)originalSize / compressedSize12;
+
+        string filename = path.substr(path.find_last_of("/\\") + 1);
+
+        cout << left
+             << setw(20) << filename
+             << setw(15) << originalSize
+             << setw(15) << compressedSize16
+             << setw(12) << ratio16
+             << setw(15) << compressedSize12
+             << setw(12) << ratio12
+             << endl;
+    }
+}
+
+void verifyCorrectness(const vector<string>& imagePaths) {
+    cout << "\n=== VERIFICATION ===" << endl;
+    cout << left
+         << setw(20) << "Image"
+         << setw(15) << "9-16 bit"
+         << setw(15) << "9-12 bit"
+         << endl;
+    cout << string(50, '-') << endl;
+
+    for (const string& path : imagePaths) {
+        int width, height;
+        vector<uint8_t> pixels = loadImage(path, width, height);
+        if (pixels.empty()) continue;
+
+        // test 9-16 bit
+        vector<uint8_t> compressed16   = encode(pixels);
+        vector<uint8_t> decompressed16 = decode(compressed16);
+        bool ok16 = (decompressed16 == pixels);
+
+        // test 9-12 bit
+        vector<uint8_t> compressed12   = encode12(pixels);
+        vector<uint8_t> decompressed12 = decode12(compressed12);
+        bool ok12 = (decompressed12 == pixels);
+
+        string filename = path.substr(path.find_last_of("/\\") + 1);
+
+        cout << left
+             << setw(20) << filename
+             << setw(15) << (ok16 ? "OK" : "MISMATCH!")
+             << setw(15) << (ok12 ? "OK" : "MISMATCH!")
+             << endl;
+    }
+}
+
 int main() {
     vector<string> images = {
         "../Images/camera_man.bmp",
@@ -168,8 +256,6 @@ int main() {
         compress(path, "../compressed/" + filename + ".lzw");
     }
 
-    benchmark(images);
-
     cout << "\nDECOMPRESSING:" << endl;
     decompress("../compressed/camera_man.lzw",    "../output/camera_man.bmp");
     decompress("../compressed/chess_board.lzw",   "../output/chess_board.bmp");
@@ -177,6 +263,9 @@ int main() {
     decompress("../compressed/grass_texture.lzw", "../output/grass_texture.bmp");
     decompress("../compressed/text_page.lzw",     "../output/text_page.bmp");
 
+    benchmark(images);
+    benchmark12(images);
+    verifyCorrectness(images);
     displayResults();
 
     return 0;
