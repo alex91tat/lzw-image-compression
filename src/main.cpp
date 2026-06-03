@@ -29,8 +29,8 @@ void compress(const string& inputPath, const string& outputPath) {
     uint32_t w = (uint32_t)width;
     uint32_t h = (uint32_t)height;
     uint32_t dataSize = (uint32_t)compressed.size();
-    file.write((char*)&w,        sizeof(uint32_t));
-    file.write((char*)&h,        sizeof(uint32_t));
+    file.write((char*)&w, sizeof(uint32_t));
+    file.write((char*)&h, sizeof(uint32_t));
     file.write((char*)&dataSize, sizeof(uint32_t));
     file.write((char*)compressed.data(), compressed.size());
     file.close();
@@ -64,8 +64,8 @@ void decompress(const string& inputPath, const string& outputPath) {
     }
 
     uint32_t w, h, dataSize;
-    file.read((char*)&w,        sizeof(uint32_t));
-    file.read((char*)&h,        sizeof(uint32_t));
+    file.read((char*)&w, sizeof(uint32_t));
+    file.read((char*)&h, sizeof(uint32_t));
     file.read((char*)&dataSize, sizeof(uint32_t));
 
     int width  = (int)w;
@@ -106,7 +106,7 @@ void benchmark(const vector<string>& imagePaths) {
 
         vector<uint8_t> compressed = encode(pixels);
 
-        long originalSize   = width * height;
+        long originalSize = width * height;
         long compressedSize = sizeof(uint32_t) * 3 + compressed.size();
         float ratio = (float)originalSize / compressedSize;
 
@@ -143,8 +143,8 @@ void displayResults() {
     };
 
     for (const string& name : images) {
-        Mat original   = imread("../Images/"  + name + ".bmp", 0);
-        Mat decomp     = imread("../output/"  + name + ".bmp", 0);
+        Mat original = imread("../Images/"  + name + ".bmp", 0);
+        Mat decomp = imread("../output/"  + name + ".bmp", 0);
 
         if (original.empty() || decomp.empty()) continue;
 
@@ -179,7 +179,7 @@ void benchmark12(const vector<string>& imagePaths) {
         vector<uint8_t> compressed16 = encode(pixels);
         vector<uint8_t> compressed12 = encode12(pixels);
 
-        long originalSize     = width * height;
+        long originalSize = width * height;
         long compressedSize16 = sizeof(uint32_t) * 3 + compressed16.size();
         long compressedSize12 = sizeof(uint32_t) * 3 + compressed12.size();
 
@@ -214,14 +214,19 @@ void verifyCorrectness(const vector<string>& imagePaths) {
         if (pixels.empty()) continue;
 
         // test 9-16 bit
-        vector<uint8_t> compressed16   = encode(pixels);
+        vector<uint8_t> compressed16 = encode(pixels);
         vector<uint8_t> decompressed16 = decode(compressed16);
-        bool ok16 = (decompressed16 == pixels);
+        Mat orig16(height, width, CV_8UC1, (void*)pixels.data());
+        Mat rest16(height, width, CV_8UC1, (void*)decompressed16.data());
+        bool ok16 = (countNonZero(orig16 != rest16) == 0);
+
 
         // test 9-12 bit
-        vector<uint8_t> compressed12   = encode12(pixels);
+        vector<uint8_t> compressed12 = encode12(pixels);
         vector<uint8_t> decompressed12 = decode12(compressed12);
-        bool ok12 = (decompressed12 == pixels);
+        Mat orig12(height, width, CV_8UC1, (void*)pixels.data());
+        Mat rest12(height, width, CV_8UC1, (void*)decompressed12.data());
+        bool ok12 = (countNonZero(orig12 != rest12) == 0);
 
         string filename = path.substr(path.find_last_of("/\\") + 1);
 
